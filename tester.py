@@ -66,6 +66,8 @@ def extract_range(range_str: str):
     Example: '50-100' -> range(50, 100)
     """
     range_list = range_str.split("-")
+    if range_list[0] == range_list[1]:
+        return None
     return range(int(range_list[0]), int(range_list[1]))
 
 
@@ -80,14 +82,28 @@ def valid_range(input_range: str):
     #                              {positive number}-{positive number}
     pattern = r"^\d+-\d+(?:,\s*\d+-\d+)*$"
     if not re.fullmatch(pattern, input_range):
-        raise argparse.ArgumentTypeError("Not a valid range. Format: start-end[, ... start-end]")
+        raise argparse.ArgumentTypeError(f"Not a valid range: {TermColors.WARNING}{input_range}{TermColors.ENDC}."
+                                          " Use positive numbers. Format: start-end[, ... start-end]")
 
     # re.split(r'\s*,\s*', input_range) splits the string by comma and any number of spaces before or after it
     ranges = [extract_range(range_str) for range_str in re.split(r"\s*,\s*", input_range)]
     if not all(ranges):
-        raise argparse.ArgumentTypeError("Not a valid range. Format: start-end[, ... start-end]")
+        raise argparse.ArgumentTypeError(f"Not a valid range: {TermColors.WARNING}{input_range}{TermColors.ENDC}. "
+                                          "Use positive numbers. Format: start-end[, ... start-end]")
 
     return ranges
+
+
+def bigger_than_zero_int(times: str):
+    try:
+        res = int(times)
+    except ValueError as e:
+        raise argparse.ArgumentTypeError(f"Not a valid times argument: {TermColors.WARNING}{times}{TermColors.ENDC}."
+                                          " Please enter a positive number.") from e
+    if res <= 0:
+        raise argparse.ArgumentTypeError(f"Not a valid times argument: {TermColors.WARNING}{times}{TermColors.ENDC}."
+                                          " Please enter a positive number.")
+    return res
 
 
 def create_test_input(test_range: range) -> list[str]:
@@ -152,7 +168,7 @@ if __name__ == "__main__":
         "--times",
         dest="times",
         metavar="TIMES",
-        type=int,
+        type=bigger_than_zero_int,
         default=1000,
         help="How many times to run the executable for each of the given ranges. Default: %(default)s",
     )
@@ -196,14 +212,15 @@ if __name__ == "__main__":
                             one_of_inputs_failed = True
                         results.append(result)
 
-        maximal_number_of_comparisons_str = (f"Maximal comparisons allowed: "
+        maximal_number_of_comparisons_str = (
+            f"Maximal comparisons allowed: "
             f"F({TermColors.WARNING}{len(test_range)}{TermColors.ENDC}) = "
             f"{TermColors.WARNING}{maximal_number_of_comparisons}{TermColors.ENDC}".ljust(ALIGN)
         )
-        worst_result = max(*results)
+        worst_result = max(results)
         worst_result_str = format_result("Worst result:                ", worst_result, TermColors.OKGREEN)
 
-        best_result = min(*results)
+        best_result = min(results)
         best_result_str = format_result("Best result:                 ", best_result, TermColors.OKBLUE)
 
         average_result = sum(results) / len(results)
