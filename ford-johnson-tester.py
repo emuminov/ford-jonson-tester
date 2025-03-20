@@ -212,9 +212,28 @@ if __name__ == "__main__":
         "this will reduce overhead.",
     )
 
+    parser.add_argument(
+        "-c",
+        "--no-colors",
+        dest="no_colors",
+        action="store_true",
+        help="Do not add colors to the output of the program. :(",
+    )
+
     one_of_inputs_failed = False
     args = parser.parse_args()
     ranges_to_test = args.ranges
+
+    if args.no_colors:
+
+        class TermColors:
+            HEADER = ""
+            OKBLUE = ""
+            OKCYAN = ""
+            OKGREEN = ""
+            WARNING = ""
+            FAIL = ""
+            ENDC = ""
 
     for i, test_range in enumerate(ranges_to_test):
         print(f"Testing set of {len(test_range)} numbers:")
@@ -232,7 +251,8 @@ if __name__ == "__main__":
                     case ErrorCode.RETURNCODE_ERROR:
                         inputs, returncode = result[1], result[2]
                         print(
-                            f"Executable failed with {returncode} on input:\n{' '.join(inputs)}",
+                            f"Executable failed with return code {TermColors.FAIL}{returncode}{TermColors.ENDC} "
+                            f"on input:\n{TermColors.FAIL}{' '.join(inputs)}{TermColors.WARNING}",
                             file=sys.stderr,
                         )
                         exit(1)
@@ -240,7 +260,8 @@ if __name__ == "__main__":
                     case ErrorCode.NO_NUMBER_OF_COMPARISONS_IN_OUTPUT:
                         print(
                             "Please modify your executable to count the amount of comparisons"
-                            "and print them in format: [Number of comparisons: -count-]",
+                            f"and print them in format: "
+                            f"{TermColors.WARNING}[Number of comparisons: -count-]{TermColors.ENDC}",
                             file=sys.stderr,
                         )
                         exit(1)
@@ -249,7 +270,8 @@ if __name__ == "__main__":
                         inputs, number_of_comparisons = result[1], result[2]
                         print(
                             f"Maximal number of comparisons is exceeded on input: "
-                            f"{number_of_comparisons} > {maximal_number_of_comparisons}\n"
+                            f"{TermColors.FAIL}{number_of_comparisons}{TermColors.ENDC} > "
+                            f"{TermColors.WARNING}{maximal_number_of_comparisons}{TermColors.ENDC}\n"
                             f"{' '.join(inputs)}\n",
                             file=sys.stderr,
                         )
@@ -260,8 +282,8 @@ if __name__ == "__main__":
                         cleaned_output = result[1]
                         print(
                             "Please modify your executable to print the result of the sort in the output: "
-                            "[After: number1, number2, ... numberN]\n"
-                            f"Your output:\n{cleaned_output}",
+                            f"{TermColors.WARNING}[After: number1, number2, ... numberN]{TermColors.ENDC}\n"
+                            f"Your output:\n{TermColors.FAIL}{cleaned_output}{TermColors.ENDC}",
                             file=sys.stderr,
                         )
                         exit(1)
@@ -270,7 +292,8 @@ if __name__ == "__main__":
                         split_output, test_input = result[1], result[2]
                         print(
                             "Numbers in the input are different from numbers in the output! Your program chewed up "
-                            f"some of the numbers. Your output:\n{split_output}\nInput:\n{test_input}",
+                            f"some of the numbers. Your output:\n{TermColors.FAIL}{split_output}{TermColors.ENDC}\n"
+                            f"Input:\n{TermColors.WARNING}{test_input}{TermColors.ENDC}",
                             file=sys.stderr,
                         )
                         exit(1)
@@ -279,7 +302,7 @@ if __name__ == "__main__":
                         failed_output, expected_output = result[1], result[2]
                         print(
                             "Your output is not sorted! Your program failed to sort the input. Your output:\n"
-                            f"{failed_output}\nInput:\n{expected_output}",
+                            f"{TermColors.FAIL}{failed_output}{TermColors.ENDC}\nInput:\n{expected_output}",
                             file=sys.stderr,
                         )
                         exit(1)
