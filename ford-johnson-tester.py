@@ -153,13 +153,13 @@ def run_test(executable_path: pathlib.Path, test_input: list[str], output_check:
 
         split_output = valid_output_match.group(1).strip().split()
         if len(split_output) != len(test_input):
-            return ErrorCode.OUTPUT_NUMBERS_DIFFER_FROM_INPUT, split_output.join(" "), test_input.join(" ")
+            return ErrorCode.OUTPUT_NUMBERS_DIFFER_FROM_INPUT, " ".join(split_output), " ".join(test_input)
 
         expected = [int(n) for n in test_input]
         expected.sort()
         split_output_int = [int(n) for n in split_output]
         if split_output_int != expected:
-            return ErrorCode.OUTPUT_NUMBERS_NOT_SORTED, split_output_int.join(" "), expected.join(" ")
+            return ErrorCode.OUTPUT_NUMBERS_NOT_SORTED, " ".join(split_output), " ".join([str(n) for n in expected])
 
     return number_of_comparisons, inputs
 
@@ -301,8 +301,9 @@ if __name__ == "__main__":
                     case ErrorCode.OUTPUT_NUMBERS_NOT_SORTED:
                         failed_output, expected_output = result[1], result[2]
                         print(
-                            "Your output is not sorted! Your program failed to sort the input. Your output:\n"
-                            f"{TermColors.FAIL}{failed_output}{TermColors.ENDC}\nInput:\n{expected_output}",
+                            "Your output is not sorted! Your program failed to sort the input. "
+                            f"Your output:\n{TermColors.FAIL}{failed_output}{TermColors.ENDC}\n"
+                            f"Input:\n{TermColors.WARNING}{expected_output}{TermColors.ENDC}",
                             file=sys.stderr,
                         )
                         exit(1)
