@@ -11,7 +11,11 @@ from math import ceil, log2
 
 class ErrorCode:
     RETURNCODE_ERROR = -1
-    NO_NUMBER_OF_COMPARISONS = -2
+    NO_NUMBER_OF_COMPARISONS_IN_OUTPUT = -2
+    NUMBER_OF_COMPARISONS_EXCEEDED = -3
+    NO_AFTER_OUTPUT = -4
+    OUTPUT_NUMBERS_DIFFER_FROM_INPUT = -5
+    OUTPUT_NUMBERS_NOT_SORTED = -6
 
 
 class TermColors:
@@ -82,27 +86,33 @@ def valid_range(input_range: str):
     #                              {positive number}-{positive number}
     pattern = r"^\d+-\d+(?:,\s*\d+-\d+)*$"
     if not re.fullmatch(pattern, input_range):
-        raise argparse.ArgumentTypeError(f"Not a valid range: {TermColors.WARNING}{input_range}{TermColors.ENDC}."
-                                          " Use positive numbers. Format: start-end[, ... start-end]")
+        raise argparse.ArgumentTypeError(
+            f"Not a valid range: {TermColors.WARNING}{input_range}{TermColors.ENDC}."
+            " Use positive numbers. Format: start-end[, ... start-end]",
+        )
 
     # re.split(r'\s*,\s*', input_range) splits the string by comma and any number of spaces before or after it
     ranges = [extract_range(range_str) for range_str in re.split(r"\s*,\s*", input_range)]
     if not all(ranges):
-        raise argparse.ArgumentTypeError(f"Not a valid range: {TermColors.WARNING}{input_range}{TermColors.ENDC}. "
-                                          "Use positive numbers. Format: start-end[, ... start-end]")
+        raise argparse.ArgumentTypeError(
+            f"Not a valid range: {TermColors.WARNING}{input_range}{TermColors.ENDC}. "
+            "Use positive numbers. Format: start-end[, ... start-end]",
+        )
 
     return ranges
 
 
-def bigger_than_zero_int(times: str):
+def bigger_than_zero_int(t: str):
     try:
-        res = int(times)
+        res = int(t)
     except ValueError as e:
-        raise argparse.ArgumentTypeError(f"Not a valid times argument: {TermColors.WARNING}{times}{TermColors.ENDC}."
-                                          " Please enter a positive number.") from e
+        raise argparse.ArgumentTypeError(
+            f"Not a valid times argument: {TermColors.WARNING}{t}{TermColors.ENDC}. Please enter a positive number.",
+        ) from e
     if res <= 0:
-        raise argparse.ArgumentTypeError(f"Not a valid times argument: {TermColors.WARNING}{times}{TermColors.ENDC}."
-                                          " Please enter a positive number.")
+        raise argparse.ArgumentTypeError(
+            f"Not a valid times argument: {TermColors.WARNING}{t}{TermColors.ENDC}. Please enter a positive number.",
+        )
     return res
 
 
@@ -115,7 +125,7 @@ def create_test_input(test_range: range) -> list[str]:
     return [str(i) for i in res]
 
 
-def run_test(executable_path: pathlib.Path, test_input: list[str]):
+def run_test(executable_path: pathlib.Path, test_input: list[str], output_check: bool):
     result = subprocess.run(
         [executable_path.absolute()] + test_input,
         stdout=subprocess.PIPE,
@@ -127,12 +137,31 @@ def run_test(executable_path: pathlib.Path, test_input: list[str]):
     if result.returncode != 0:
         return ErrorCode.RETURNCODE_ERROR, inputs, result.returncode
 
-    found_pattern = re.search(r"^Number of comparisons: [0-9]+$", result.stdout, re.MULTILINE)
-    if not found_pattern:
-        return ErrorCode.NO_NUMBER_OF_COMPARISONS, inputs, result.returncode
+    cleaned_ouput = re.sub(r"\x1b\[[0-9;]*m", "", result.stdout)
+    number_of_comparisons_match = re.search(r"^Number of comparisons: [0-9]+$", cleaned_ouput, re.MULTILINE)
+    if not number_of_comparisons_match:
+        return (ErrorCode.NO_NUMBER_OF_COMPARISONS_IN_OUTPUT,)
 
-    number_of_comparisons = int(found_pattern.group(0).split()[3])
-    return number_of_comparisons, inputs, result.returncode
+    number_of_comparisons = int(number_of_comparisons_match.group(0).split()[3])
+    if number_of_comparisons > maximal_number_of_comparisons:
+        return ErrorCode.NUMBER_OF_COMPARISONS_EXCEEDED, inputs, number_of_comparisons
+
+    if output_check:
+        valid_output_match = re.search(r"^\s*After:\s*\[?((?:\d+\s*)+)\]?\s*$", cleaned_ouput, re.MULTILINE)
+        if not valid_output_match:
+            return ErrorCode.NO_AFTER_OUTPUT, cleaned_ouput
+
+        split_output = valid_output_match.group(1).strip().split()
+        if len(split_output) != len(test_input):
+            return ErrorCode.OUTPUT_NUMBERS_DIFFER_FROM_INPUT, split_output.join(" "), test_input.join(" ")
+
+        expected = [int(n) for n in test_input]
+        expected.sort()
+        split_output_int = [int(n) for n in split_output]
+        if split_output_int != expected:
+            return ErrorCode.OUTPUT_NUMBERS_NOT_SORTED, split_output_int.join(" "), expected.join(" ")
+
+    return number_of_comparisons, inputs
 
 
 if __name__ == "__main__":
@@ -173,6 +202,16 @@ if __name__ == "__main__":
         help="How many times to run the executable for each of the given ranges. Default: %(default)s",
     )
 
+    parser.add_argument(
+        "-n",
+        "--no-output-check",
+        dest="output_check",
+        action="store_false",
+        help="With this flag enabled, the program won't check the validity of an output and whether it's sorted or not."
+        " If you know that the algorithm implementation outputs correct values which are sorted correctly, enabing "
+        "this will reduce overhead.",
+    )
+
     one_of_inputs_failed = False
     args = parser.parse_args()
     ranges_to_test = args.ranges
@@ -183,19 +222,22 @@ if __name__ == "__main__":
         test_inputs = [create_test_input(test_range) for _ in range(args.times)]
         results = []
         with ProcessPoolExecutor() as executor:
-            futures = [executor.submit(run_test, args.executable, test_input) for test_input in test_inputs]
+            futures = [
+                executor.submit(run_test, args.executable, test_input, args.output_check) for test_input in test_inputs
+            ]
             for future in as_completed(futures):
-                result, inputs, returncode = future.result()
+                result = future.result()
 
-                match result:
+                match result[0]:
                     case ErrorCode.RETURNCODE_ERROR:
+                        inputs, returncode = result[1], result[2]
                         print(
                             f"Executable failed with {returncode} on input:\n{' '.join(inputs)}",
                             file=sys.stderr,
                         )
                         exit(1)
 
-                    case ErrorCode.NO_NUMBER_OF_COMPARISONS:
+                    case ErrorCode.NO_NUMBER_OF_COMPARISONS_IN_OUTPUT:
                         print(
                             "Please modify your executable to count the amount of comparisons"
                             "and print them in format: [Number of comparisons: -count-]",
@@ -203,14 +245,47 @@ if __name__ == "__main__":
                         )
                         exit(1)
 
+                    case ErrorCode.NUMBER_OF_COMPARISONS_EXCEEDED:
+                        inputs, number_of_comparisons = result[1], result[2]
+                        print(
+                            f"Maximal number of comparisons is exceeded on input: "
+                            f"{number_of_comparisons} > {maximal_number_of_comparisons}\n"
+                            f"{' '.join(inputs)}\n",
+                            file=sys.stderr,
+                        )
+                        one_of_inputs_failed = True
+                        results.append(number_of_comparisons)
+
+                    case ErrorCode.NO_AFTER_OUTPUT:
+                        cleaned_output = result[1]
+                        print(
+                            "Please modify your executable to print the result of the sort in the output: "
+                            "[After: number1, number2, ... numberN]\n"
+                            f"Your output:\n{cleaned_output}",
+                            file=sys.stderr,
+                        )
+                        exit(1)
+
+                    case ErrorCode.OUTPUT_NUMBERS_DIFFER_FROM_INPUT:
+                        split_output, test_input = result[1], result[2]
+                        print(
+                            "Numbers in the input are different from numbers in the output! Your program chewed up "
+                            f"some of the numbers. Your output:\n{split_output}\nInput:\n{test_input}",
+                            file=sys.stderr,
+                        )
+                        exit(1)
+
+                    case ErrorCode.OUTPUT_NUMBERS_NOT_SORTED:
+                        failed_output, expected_output = result[1], result[2]
+                        print(
+                            "Your output is not sorted! Your program failed to sort the input. Your output:\n"
+                            f"{failed_output}\nInput:\n{expected_output}",
+                            file=sys.stderr,
+                        )
+                        exit(1)
+
                     case _:
-                        if result > maximal_number_of_comparisons:
-                            print(
-                                f"Maximal number of comparisons is exceeded on input:\n{' '.join(inputs)}\n",
-                                file=sys.stderr,
-                            )
-                            one_of_inputs_failed = True
-                        results.append(result)
+                        results.append(result[0])
 
         maximal_number_of_comparisons_str = (
             f"Maximal comparisons allowed: "
