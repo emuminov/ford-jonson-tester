@@ -336,4 +336,3 @@ if __name__ == "__main__":
         exit(1)
     else:
         print(f"\n{TermColors.OKGREEN}ALL OF THE TESTS PASSED{TermColors.ENDC}")
-
