@@ -243,9 +243,8 @@ if __name__ == "__main__":
             ENDC = ""
 
     print(
-        f"Running the program {C.WARNING}{args.times}{C.ENDC} times for each of the ranges: {
-            ', '.join([represent_range(r) for r in args.ranges])
-        }\n",
+        f"Running the program {C.WARNING}{args.times}{C.ENDC} times for each of the ranges: "
+        f"{', '.join([represent_range(r) for r in args.ranges])}\n",
     )
     for i, test_range in enumerate(ranges_to_test):
         print(f"Testing set of {len(test_range)} numbers:")
