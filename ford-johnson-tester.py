@@ -18,7 +18,11 @@ class ErrorCode:
     OUTPUT_NUMBERS_NOT_SORTED = -6
 
 
-class TermColors:
+class C:
+    """
+    Terminal color codes for easy use.
+    """
+
     HEADER = "\033[95m"
     OKBLUE = "\033[94m"
     OKCYAN = "\033[96m"
@@ -39,10 +43,9 @@ def format_result(label: str, result: int | float, okcolor: str):
     elif type_of_result is float:
         result_str = f"{result:.1f}"
     return (
-        f"{label}{TermColors.FAIL}{result_str}{TermColors.ENDC}".ljust(ALIGN)
-        + f"{TermColors.FAIL}FAIL{TermColors.ENDC}"
+        f"{label}{C.FAIL}{result_str}{C.ENDC}".ljust(ALIGN) + f"{C.FAIL}FAIL{C.ENDC}"
         if maximal_number_of_comparisons < result
-        else f"{label}{okcolor}{result_str}{TermColors.ENDC}".ljust(ALIGN) + f"{TermColors.OKGREEN}OK{TermColors.ENDC}"
+        else f"{label}{okcolor}{result_str}{C.ENDC}".ljust(ALIGN) + f"{C.OKGREEN}OK{C.ENDC}"
     )
 
 
@@ -87,7 +90,7 @@ def valid_range(input_range: str):
     pattern = r"^\d+-\d+(?:,\s*\d+-\d+)*$"
     if not re.fullmatch(pattern, input_range):
         raise argparse.ArgumentTypeError(
-            f"Not a valid range: {TermColors.WARNING}{input_range}{TermColors.ENDC}."
+            f"Not a valid range: {C.WARNING}{input_range}{C.ENDC}."
             " Use positive numbers. Format: start-end[, ... start-end]",
         )
 
@@ -95,7 +98,7 @@ def valid_range(input_range: str):
     ranges = [extract_range(range_str) for range_str in re.split(r"\s*,\s*", input_range)]
     if not all(ranges):
         raise argparse.ArgumentTypeError(
-            f"Not a valid range: {TermColors.WARNING}{input_range}{TermColors.ENDC}. "
+            f"Not a valid range: {C.WARNING}{input_range}{C.ENDC}. "
             "Use positive numbers. Format: start-end[, ... start-end]",
         )
 
@@ -107,11 +110,11 @@ def bigger_than_zero_int(t: str):
         res = int(t)
     except ValueError as e:
         raise argparse.ArgumentTypeError(
-            f"Not a valid times argument: {TermColors.WARNING}{t}{TermColors.ENDC}. Please enter a positive number.",
+            f"Not a valid times argument: {C.WARNING}{t}{C.ENDC}. Please enter a positive number.",
         ) from e
     if res <= 0:
         raise argparse.ArgumentTypeError(
-            f"Not a valid times argument: {TermColors.WARNING}{t}{TermColors.ENDC}. Please enter a positive number.",
+            f"Not a valid times argument: {C.WARNING}{t}{C.ENDC}. Please enter a positive number.",
         )
     return res
 
@@ -162,6 +165,10 @@ def run_test(executable_path: pathlib.Path, test_input: list[str], output_check:
             return ErrorCode.OUTPUT_NUMBERS_NOT_SORTED, " ".join(split_output), " ".join([str(n) for n in expected])
 
     return number_of_comparisons, inputs
+
+
+def represent_range(r: range):
+    return f"{C.HEADER}[{r[0]}-{r[-1] + 1}){C.ENDC}"
 
 
 if __name__ == "__main__":
@@ -226,7 +233,7 @@ if __name__ == "__main__":
 
     if args.no_colors:
 
-        class TermColors:
+        class C:
             HEADER = ""
             OKBLUE = ""
             OKCYAN = ""
@@ -235,6 +242,11 @@ if __name__ == "__main__":
             FAIL = ""
             ENDC = ""
 
+    print(
+        f"Running the program {C.WARNING}{args.times}{C.ENDC} times for each of the ranges: {
+            ', '.join([represent_range(r) for r in args.ranges])
+        }\n",
+    )
     for i, test_range in enumerate(ranges_to_test):
         print(f"Testing set of {len(test_range)} numbers:")
         maximal_number_of_comparisons = calculate_number_of_maximal_comparisons(len(test_range))
@@ -251,8 +263,8 @@ if __name__ == "__main__":
                     case ErrorCode.RETURNCODE_ERROR:
                         inputs, returncode = result[1], result[2]
                         print(
-                            f"Executable failed with return code {TermColors.FAIL}{returncode}{TermColors.ENDC} "
-                            f"on input:\n{TermColors.FAIL}{' '.join(inputs)}{TermColors.WARNING}",
+                            f"Executable failed with return code {C.FAIL}{returncode}{C.ENDC} "
+                            f"on input:\n{C.FAIL}{' '.join(inputs)}{C.WARNING}",
                             file=sys.stderr,
                         )
                         exit(1)
@@ -261,7 +273,7 @@ if __name__ == "__main__":
                         print(
                             "Please modify your executable to count the amount of comparisons"
                             f"and print them in format: "
-                            f"{TermColors.WARNING}[Number of comparisons: -count-]{TermColors.ENDC}",
+                            f"{C.WARNING}[Number of comparisons: -count-]{C.ENDC}",
                             file=sys.stderr,
                         )
                         exit(1)
@@ -270,8 +282,8 @@ if __name__ == "__main__":
                         inputs, number_of_comparisons = result[1], result[2]
                         print(
                             f"Maximal number of comparisons is exceeded on input: "
-                            f"{TermColors.FAIL}{number_of_comparisons}{TermColors.ENDC} > "
-                            f"{TermColors.WARNING}{maximal_number_of_comparisons}{TermColors.ENDC}\n"
+                            f"{C.FAIL}{number_of_comparisons}{C.ENDC} > "
+                            f"{C.WARNING}{maximal_number_of_comparisons}{C.ENDC}\n"
                             f"{' '.join(inputs)}\n",
                             file=sys.stderr,
                         )
@@ -282,8 +294,8 @@ if __name__ == "__main__":
                         cleaned_output = result[1]
                         print(
                             "Please modify your executable to print the result of the sort in the output: "
-                            f"{TermColors.WARNING}[After: number1, number2, ... numberN]{TermColors.ENDC}\n"
-                            f"Your output:\n{TermColors.FAIL}{cleaned_output}{TermColors.ENDC}",
+                            f"{C.WARNING}[After: number1, number2, ... numberN]{C.ENDC}\n"
+                            f"Your output:\n{C.FAIL}{cleaned_output}{C.ENDC}",
                             file=sys.stderr,
                         )
                         exit(1)
@@ -292,8 +304,8 @@ if __name__ == "__main__":
                         split_output, test_input = result[1], result[2]
                         print(
                             "Numbers in the input are different from numbers in the output! Your program chewed up "
-                            f"some of the numbers. Your output:\n{TermColors.FAIL}{split_output}{TermColors.ENDC}\n"
-                            f"Input:\n{TermColors.WARNING}{test_input}{TermColors.ENDC}",
+                            f"some of the numbers. Your output:\n{C.FAIL}{split_output}{C.ENDC}\n"
+                            f"Input:\n{C.WARNING}{test_input}{C.ENDC}",
                             file=sys.stderr,
                         )
                         exit(1)
@@ -302,8 +314,8 @@ if __name__ == "__main__":
                         failed_output, expected_output = result[1], result[2]
                         print(
                             "Your output is not sorted! Your program failed to sort the input. "
-                            f"Your output:\n{TermColors.FAIL}{failed_output}{TermColors.ENDC}\n"
-                            f"Input:\n{TermColors.WARNING}{expected_output}{TermColors.ENDC}",
+                            f"Your output:\n{C.FAIL}{failed_output}{C.ENDC}\n"
+                            f"Input:\n{C.WARNING}{expected_output}{C.ENDC}",
                             file=sys.stderr,
                         )
                         exit(1)
@@ -313,17 +325,17 @@ if __name__ == "__main__":
 
         maximal_number_of_comparisons_str = (
             f"Maximal comparisons allowed: "
-            f"F({TermColors.WARNING}{len(test_range)}{TermColors.ENDC}) = "
-            f"{TermColors.WARNING}{maximal_number_of_comparisons}{TermColors.ENDC}".ljust(ALIGN)
+            f"F({C.WARNING}{len(test_range)}{C.ENDC}) = "
+            f"{C.WARNING}{maximal_number_of_comparisons}{C.ENDC}".ljust(ALIGN)
         )
         worst_result = max(results)
-        worst_result_str = format_result("Worst result:                ", worst_result, TermColors.OKGREEN)
+        worst_result_str = format_result("Worst result:                ", worst_result, C.OKGREEN)
 
         best_result = min(results)
-        best_result_str = format_result("Best result:                 ", best_result, TermColors.OKBLUE)
+        best_result_str = format_result("Best result:                 ", best_result, C.OKBLUE)
 
         average_result = sum(results) / len(results)
-        average_result_str = format_result("Average result:              ", average_result, TermColors.OKCYAN)
+        average_result_str = format_result("Average result:              ", average_result, C.OKCYAN)
 
         print(f"{maximal_number_of_comparisons_str}")
         print(f"{worst_result_str}")
@@ -333,7 +345,7 @@ if __name__ == "__main__":
             print("")
 
     if one_of_inputs_failed:
-        print(f"\n{TermColors.FAIL}SOME OF THE TESTS FAILED{TermColors.ENDC}")
+        print(f"\n{C.FAIL}SOME OF THE TESTS FAILED{C.ENDC}")
         exit(1)
     else:
-        print(f"\n{TermColors.OKGREEN}ALL OF THE TESTS PASSED{TermColors.ENDC}")
+        print(f"\n{C.OKGREEN}ALL OF THE TESTS PASSED{C.ENDC}")
