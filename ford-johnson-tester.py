@@ -143,7 +143,7 @@ def run_test(executable_path: pathlib.Path, test_input: list[str], output_check:
     cleaned_ouput = re.sub(r"\x1b\[[0-9;]*m", "", result.stdout)
     number_of_comparisons_match = re.search(r"^Number of comparisons: [0-9]+$", cleaned_ouput, re.MULTILINE)
     if not number_of_comparisons_match:
-        return (ErrorCode.NO_NUMBER_OF_COMPARISONS_IN_OUTPUT,)
+        return ErrorCode.NO_NUMBER_OF_COMPARISONS_IN_OUTPUT, cleaned_ouput
 
     number_of_comparisons = int(number_of_comparisons_match.group(0).split()[3])
     if number_of_comparisons > maximal_number_of_comparisons:
@@ -269,10 +269,13 @@ if __name__ == "__main__":
                         exit(1)
 
                     case ErrorCode.NO_NUMBER_OF_COMPARISONS_IN_OUTPUT:
+                        cleaned_output = result[1]
                         print(
-                            "Please modify your executable to count the amount of comparisons"
+                            "Please modify your executable to count the amount of comparisons "
                             f"and print them in format: "
-                            f"{C.WARNING}[Number of comparisons: -count-]{C.ENDC}",
+                            f"{C.WARNING}[Number of comparisons: -count-]{C.ENDC}\n"
+                            f"Your output:\n{C.FAIL}{cleaned_output}{C.ENDC}",
+                            end="",
                             file=sys.stderr,
                         )
                         exit(1)
@@ -295,6 +298,7 @@ if __name__ == "__main__":
                             "Please modify your executable to print the result of the sort in the output: "
                             f"{C.WARNING}[After: number1, number2, ... numberN]{C.ENDC}\n"
                             f"Your output:\n{C.FAIL}{cleaned_output}{C.ENDC}",
+                            end="",
                             file=sys.stderr,
                         )
                         exit(1)
@@ -304,7 +308,7 @@ if __name__ == "__main__":
                         print(
                             "Numbers in the input are different from numbers in the output! Your program chewed up "
                             f"some of the numbers. Your output:\n{C.FAIL}{split_output}{C.ENDC}\n"
-                            f"Input:\n{C.WARNING}{test_input}{C.ENDC}",
+                            f"Input that caused failure:\n{C.WARNING}{test_input}{C.ENDC}",
                             file=sys.stderr,
                         )
                         exit(1)
@@ -314,7 +318,7 @@ if __name__ == "__main__":
                         print(
                             "Your output is not sorted! Your program failed to sort the input. "
                             f"Your output:\n{C.FAIL}{failed_output}{C.ENDC}\n"
-                            f"Input:\n{C.WARNING}{expected_output}{C.ENDC}",
+                            f"Expected output:\n{C.WARNING}{expected_output}{C.ENDC}",
                             file=sys.stderr,
                         )
                         exit(1)
