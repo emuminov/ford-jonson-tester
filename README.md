@@ -1,5 +1,5 @@
 # Ford-Johnson tester
-This is a program that tests the implementation of the Ford-Johnson algorithm, also known as [merge-insertion sort](https://en.wikipedia.org/wiki/Merge-insertion_sort). The tester was made specifically for testing the exercises from cpp09 module from the common core of the 42 school, where you have to implement this algorithm.
+This is a program that tests the implementation of the [Ford-Johnson algorithm](https://dev.to/emuminov/human-explanation-and-step-by-step-visualisation-of-the-ford-johnson-algorithm-5g91), also known as [merge-insertion sort](https://en.wikipedia.org/wiki/Merge-insertion_sort). The tester was made specifically for testing the exercises from cpp09 module from the common core of the 42 school, where you have to implement this algorithm.
 
 https://github.com/user-attachments/assets/658ca645-9b64-4097-9269-9f833d97e17e
 
